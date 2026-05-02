@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>🎨 Devlin Park — Рисовалка с галереей</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ff6b6b, #4a4aff);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Comic Neue', 'Comic Sans MS', 'Chalkboard SE', cursive;
+            margin: 0;
+            padding: 12px;
+            overflow-x: hidden;
+        }
+
+        .game-wrapper {
+            max-width: 550px;
+            width: 100%;
+            background: #fff8e7;
+            border-radius: 48px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        /* МЕНЮ */
+        .menu-screen {
+            background: linear-gradient(135deg, #ff3a3a, #1e3aff);
+            padding: 30px 16px 40px;
+            text-align: center;
+        }
+        .game-title {
+            font-size: 2.3rem;
+            font-weight: bold;
+            color: #fff3e0;
+            text-shadow: 3px 3px 0 #b45a2b;
+        }
+        .sub {
+            font-size: 0.9rem;
+            color: #fff0c0;
+            margin-bottom: 30px;
+        }
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            align-items: center;
+        }
+        .menu-btn {
+            background: #f7b05e;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 12px 24px;
+            border-radius: 60px;
+            width: 80%;
+            max-width: 260px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #9b5e2c;
+            transition: transform 0.15s ease, box-shadow 0.1s ease;
+            font-family: inherit;
+        }
+        /* Увеличение кнопки при наведении (и на touch устройствах через активное состояние) */
+        .menu-btn:hover {
+            transform: scale(1.05);
+        }
+        .menu-btn:active {
+            transform: translateY(3px) scale(0.98);
+            box-shadow: 0 2px 0 #9b5e2c;
+        }
+
+        /* ГАЛЕРЕЯ */
+        .gallery-screen {
+            display: none;
+            padding: 16px;
+            background: #fff8e7;
+            min-height: 500px;
+        }
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .gallery-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #a55d2a;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 14px;
+            max-height: 55vh;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f7efdb;
+            border-radius: 40px;
+        }
+        .gallery-item {
+            background: #ffe2b5;
+            border-radius: 28px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 4px 0 #c19a6b;
+        }
+        .gallery-item canvas {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 20px;
+            background: white;
+            margin-bottom: 8px;
+        }
+        .gallery-item button {
+            background: #ffcf8a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            margin: 4px 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .empty-gallery {
+            text-align: center;
+            padding: 40px;
+            color: #b98f54;
+            font-size: 1rem;
+        }
+
+        /* ПОЛНОЭКРАННЫЙ ХОЛСТ + АНИМАЦИЯ ТЕМНОТЫ */
+        .canvas-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2c2c2c;
+            z-index: 1000;
+            flex-direction: column;
+            padding: 10px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .canvas-screen.visible {
+            opacity: 1;
+        }
+        
+        /* Затемняющий оверлей для плавного перехода */
+        .fade-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        .fade-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff0dc;
+            padding: 8px 14px;
+            border-radius: 50px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .canvas-title {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #a55d2a;
+        }
+        .canvas-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #fff0dc;
+            padding: 8px 12px;
+            border-radius: 50px;
+            margin: 8px 0;
+            justify-content: center;
+        }
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #e0d6c0;
+            border-radius: 32px;
+            padding: 8px;
+            overflow: auto;
+        }
+        #fullCanvas {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1/1;
+        }
+        .color-big {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .rainbow-btn {
+            background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px black;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .rainbow-btn:active { transform: scale(0.95); }
+        .custom-color-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ff69b4;
+            border: 3px solid white;
+            cursor: pointer;
+            box-shadow: 0 2px 6px black;
+            transition: transform 0.1s;
+        }
+        .custom-color-btn:active { transform: scale(0.95); }
+        .tool-btn {
+            background: #ffcf8a;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 8px 14px;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #b97f3a;
+            transition: transform 0.05s linear;
+        }
+        .tool-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #b97f3a; }
+        .eraser-active { background: #8fbc8f; color: white; }
+        .close-canvas { background: #ffaa66; }
+        .message-area {
+            background: #f9eec1;
+            border-radius: 40px;
+            padding: 6px 10px;
+            text-align: center;
+            font-size: 0.75rem;
+            margin-top: 6px;
+        }
+        footer {
+            font-size: 0.6rem;
+            text-align: center;
+            color: #b68b40;
+            margin-top: 15px;
+        }
+        
+        /* МОДАЛЬНОЕ ОКНО НАСТРОЕК */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+        }
+        .modal-content {
+            background: #fff8e7;
+            border-radius: 48px;
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+            animation: bounce 0.2s;
+        }
+        @keyframes bounce {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .setting-row {
+            background: #ffe6c7;
+            border-radius: 40px;
+            padding: 12px;
+            margin: 12px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .setting-row select, .setting-row button {
+            background: #ffcf8a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .brush-slider {
+            width: 140px;
+        }
+        @media (max-width: 480px) {
+            .tool-btn { padding: 6px 10px; font-size: 0.75rem; }
+            .rainbow-btn, .custom-color-btn { width: 38px; height: 38px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <!-- МЕНЮ -->
+    <div id="menuScreen" class="menu-screen">
+        <div class="game-title">🎨 DEVLIN PARK 🖌️</div>
+        <div class="sub">Твоя творческая студия</div>
+        <div class="menu-buttons">
+            <button class="menu-btn" id="enterCanvasBtn">🚪 Войти в холст</button>
+            <button class="menu-btn" id="galleryMenuBtn">🖼️ Моя галерея</button>
+            <button class="menu-btn" id="settingsMenuBtn">⚙️ Настройки</button>
+        </div>
+        <footer>Рисуй пальцем, сохраняй, скачивай!</footer>
+    </div>
+
+    <!-- ГАЛЕРЕЯ -->
+    <div id="galleryScreen" class="gallery-screen">
+        <div class="gallery-header">
+            <div class="gallery-title">🖼️ Мои рисунки</div>
+            <button class="menu-btn" id="backToMenuFromGallery" style="width:auto; padding:6px 16px; font-size:0.9rem;">🏠 Назад</button>
+        </div>
+        <div id="galleryGrid" class="gallery-grid">
+            <div class="empty-gallery">✨ Здесь будут твои рисунки. Нарисуй и сохрани! ✨</div>
+        </div>
+    </div>
+
+    <!-- ХОЛСТ -->
+    <div id="canvasScreen" class="canvas-screen">
+        <div class="canvas-header">
+            <div class="canvas-title">🎨 Рисуй как хочешь!</div>
+            <button class="tool-btn close-canvas" id="closeCanvasBtn">❌ Выйти</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="fullCanvas" width="600" height="600"></canvas>
+        </div>
+        <div class="canvas-tools">
+            <div class="color-big">
+                <div id="rainbowBrushCanvas" class="rainbow-btn" title="Радужная кисть"></div>
+                <div id="customBrushCanvas" class="custom-color-btn" style="background:#FF66CC;" title="Выбрать цвет"></div>
+            </div>
+            <button id="eraserCanvasBtn" class="tool-btn">🧽 Ластик</button>
+            <button id="saveToGalleryBtn" class="tool-btn">💾 Сохранить</button>
+            <button id="clearCanvasBtn" class="tool-btn">🗑️ Очистить</button>
+        </div>
+        <div class="message-area" id="canvasMessage">🌈 Рисуй пальцем! Сохраняй шедевры в галерею!</div>
+    </div>
+</div>
+
+<!-- Затемняющий оверлей -->
+<div id="fadeOverlay" class="fade-overlay"></div>
+
+<!-- МОДАЛЬНОЕ ОКНО НАСТРОЕК -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h3>⚙️ Настройки</h3>
+        <div class="setting-row">
+            <span>🎵 Музыка</span>
+            <button id="musicToggleBtn">🔇 Выкл</button>
+        </div>
+        <div class="setting-row">
+            <span>🌍 Язык</span>
+            <select id="languageSelect">
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="en">🇬🇧 English</option>
+                <option value="be">🇧🇾 Беларуская</option>
+                <option value="uk">🇺🇦 Українська</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <span>✏️ Размер кисти</span>
+            <input type="range" id="modalBrushSize" min="3" max="35" value="12" class="brush-slider">
+            <span id="brushSizeValue">12</span>
+        </div>
+        <div class="setting-row">
+            <span>🗑️ Галерея</span>
+            <button id="clearGalleryBtn">Очистить всё</button>
+        </div>
+        <button id="closeModalBtn" style="margin-top:12px; background:#ffcf8a; border:none; padding:8px 20px; border-radius:40px;">Закрыть</button>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- ХРАНИЛИЩЕ РИСУНКОВ ----------
+        let savedDrawings = [];
+        
+        function loadGalleryFromStorage() {
+            const stored = localStorage.getItem('devlinpark_drawings');
+            if(stored) { try { savedDrawings = JSON.parse(stored); } catch(e) { savedDrawings = []; } }
+            else savedDrawings = [];
+        }
+        function saveGalleryToStorage() { localStorage.setItem('devlinpark_drawings', JSON.stringify(savedDrawings)); }
+        
+        function addDrawingToGallery(dataURL) {
+            savedDrawings.unshift({ id: Date.now(), dataURL: dataURL, timestamp: new Date().toLocaleString() });
+            if(savedDrawings.length > 30) savedDrawings.pop();
+            saveGalleryToStorage();
+            renderGallery();
+        }
+        
+        function deleteDrawing(id) {
+            savedDrawings = savedDrawings.filter(d => d.id !== id);
+            saveGalleryToStorage();
+            renderGallery();
+        }
+        
+        function downloadDrawing(dataURL, id) {
+            const link = document.createElement('a');
+            link.download = `devlinpark_${id}.png`;
+            link.href = dataURL;
+            link.click();
+        }
+        
+        function clearAllGallery() {
+            if(confirm('Удалить все сохранённые рисунки?')) {
+                savedDrawings = [];
+                saveGalleryToStorage();
+                renderGallery();
+                const msg = document.getElementById('canvasMessage');
+                if(msg && msg.innerText) msg.innerHTML = '🗑️ Галерея очищена!';
+            }
+        }
+        
+        function renderGallery() {
+            const grid = document.getElementById('galleryGrid');
+            if(!grid) return;
+            if(savedDrawings.length === 0) {
+                grid.innerHTML = '<div class="empty-gallery">✨ Здесь будут твои рисунки. Нарисуй и сохрани! ✨</div>';
+                return;
+            }
+            grid.innerHTML = '';
+            savedDrawings.forEach(drawing => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                const canvas = document.createElement('canvas');
+                canvas.width = 150; canvas.height = 150;
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, 150, 150);
+                img.src = drawing.dataURL;
+                const btnGroup = document.createElement('div');
+                const downloadBtn = document.createElement('button');
+                downloadBtn.innerHTML = '⬇️ Скачать';
+                downloadBtn.onclick = (e) => { e.stopPropagation(); downloadDrawing(drawing.dataURL, drawing.id); };
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.onclick = (e) => { e.stopPropagation(); if(confirm('Удалить рисунок?')) deleteDrawing(drawing.id); };
+                btnGroup.appendChild(downloadBtn);
+                btnGroup.appendChild(deleteBtn);
+                item.appendChild(canvas);
+                item.appendChild(btnGroup);
+                grid.appendChild(item);
+            });
+        }
+        
+        // ---------- РИСОВАНИЕ ----------
+        const canvas = document.getElementById('fullCanvas');
+        const ctx = canvas.getContext('2d');
+        let painting = false, lastX = 0, lastY = 0;
+        let isEraser = false, isRainbow = true, customColor = "#FF66CC", rainbowHue = 0;
+        let brushSize = 12;
+        
+        function initCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = brushSize;
+        }
+        
+        function getCoords(e, canvasEl) {
+            const rect = canvasEl.getBoundingClientRect();
+            const scaleX = canvasEl.width / rect.width;
+            const scaleY = canvasEl.height / rect.height;
+            let clientX, clientY;
+            if(e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; e.preventDefault(); }
+            else { clientX = e.clientX; clientY = e.clientY; }
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(0, x), canvasEl.width);
+            y = Math.min(Math.max(0, y), canvasEl.height);
+            return { x, y };
+        }
+        
+        function startDraw(e) {
+            e.preventDefault();
+            painting = true;
+            const { x, y } = getCoords(e, canvas);
+            lastX = x; lastY = y;
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(lastX+0.5, lastY+0.5); ctx.stroke();
+        }
+        
+        function draw(e) {
+            if(!painting) return;
+            e.preventDefault();
+            const { x, y } = getCoords(e, canvas);
+            ctx.lineWidth = brushSize;
+            let strokeColor;
+            if(isEraser) strokeColor = "#FFFFFF";
+            else if(isRainbow) { rainbowHue = (rainbowHue + 6) % 360; strokeColor = `hsl(${rainbowHue}, 75%, 60%)`; }
+            else strokeColor = customColor;
+            ctx.strokeStyle = strokeColor;
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+            lastX = x; lastY = y;
+        }
+        function stopDraw() { painting = false; }
+        function clearFullCanvas() { ctx.fillStyle='white'; ctx.fillRect(0,0,canvas.width,canvas.height); document.getElementById('canvasMessage').innerHTML = '🧽 Холст очищен!'; setTimeout(()=>{ if(document.getElementById('canvasMessage')) document.getElementById('canvasMessage').innerHTML = translations[currentLang].msgStart; },1500); }
+        function saveCurrentDrawing() { addDrawingToGallery(canvas.toDataURL('image/png')); document.getElementById('canvasMessage').innerHTML = '💾 Сохранено в галерею!'; setTimeout(()=>{ if(document.getElementById('canvasMessage')) document.getElementById('canvasMessage').innerHTML = translations[currentLang].msgStart; },2000); }
+        
+        // ---------- АНИМАЦИЯ ПЕРЕХОДА С ТЕМНОТОЙ ----------
+        const fadeOverlay = document.getElementById('fadeOverlay');
+        const menuScreen = document.getElementById('menuScreen');
+        const galleryScreen = document.getElementById('galleryScreen');
+        const canvasScreen = document.getElementById('canvasScreen');
+        
+        function showMenu() {
+            // Затемнение и плавный переход
+            fadeOverlay.classList.add('active');
+            setTimeout(() => {
+                menuScreen.style.display = 'block';
+                galleryScreen.style.display = 'none';
+                canvasScreen.style.display = 'none';
+                canvasScreen.classList.remove('visible');
+                fadeOverlay.classList.remove('active');
+            }, 400);
+        }
+        
+        function showGallery() {
+            fadeOverlay.classList.add('active');
+            setTimeout(() => {
+                menuScreen.style.display = 'none';
+                galleryScreen.style.display = 'block';
+                canvasScreen.style.display = 'none';
+                canvasScreen.classList.remove('visible');
+                renderGallery();
+                fadeOverlay.classList.remove('active');
+            }, 400);
+        }
+        
+        function showCanvas() {
+            fadeOverlay.classList.add('active');
+            setTimeout(() => {
+                menuScreen.style.display = 'none';
+                galleryScreen.style.display = 'none';
+                canvasScreen.style.display = 'flex';
+                // Небольшая задержка перед появлением холста (как в мультиках)
+                setTimeout(() => {
+                    canvasScreen.classList.add('visible');
+                    fadeOverlay.classList.remove('active');
+                }, 80);
+            }, 400);
+        }
+        
+        // ---------- НАСТРОЙКИ И ЯЗЫКИ ----------
+        const translations = {
+            ru: { msgStart: "🌈 Рисуй пальцем! Сохраняй шедевры в галерею!" },
+            en: { msgStart: "🌈 Draw with your finger! Save masterpieces!" },
+            be: { msgStart: "🌻 Малюй пальцам! Захоўвай шэдэўры!" },
+            uk: { msgStart: "🎨 Малюй пальцем! Зберігай шедеври!" }
+        };
+        let currentLang = 'ru';
+        function updateUITexts() { 
+            const msg = document.getElementById('canvasMessage');
+            if(msg) msg.innerHTML = translations[currentLang].msgStart;
+        }
+        
+        // Музыка
+        let audioCtx = null, musicInterval = null, musicEnabled = false;
+        function playSound() { if(musicEnabled && audioCtx){ const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value=880; gain.gain.value=0.07; osc.start(); gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.2); osc.stop(audioCtx.currentTime+0.2); } }
+        function startBgMusic(){ if(musicInterval) clearInterval(musicInterval); if(!musicEnabled||!audioCtx) return; musicInterval = setInterval(()=>{ if(musicEnabled&&audioCtx){ let t=audioCtx.currentTime; [523,659,784].forEach((f,i)=>{ const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value=f; gain.gain.value=0.04; osc.start(t+i*0.2); gain.gain.exponentialRampToValueAtTime(0.0001,t+i*0.2+0.25); osc.stop(t+i*0.2+0.25); }); } }, 5400); }
+        function stopBgMusic(){ if(musicInterval) clearInterval(musicInterval); musicInterval=null; }
+        
+        // Модалка
+        const modal = document.getElementById('settingsModal');
+        document.getElementById('settingsMenuBtn').onclick = () => modal.style.display = 'flex';
+        document.getElementById('closeModalBtn').onclick = () => modal.style.display = 'none';
+        window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
+        
+        // Настройки
+        const musicBtn = document.getElementById('musicToggleBtn');
+        musicBtn.onclick = () => {
+            musicEnabled = !musicEnabled;
+            if(musicEnabled){
+                if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+                if(audioCtx.state==='suspended') audioCtx.resume();
+                startBgMusic(); playSound();
+                musicBtn.innerHTML = "🔊 Вкл";
+            } else { stopBgMusic(); musicBtn.innerHTML = "🔇 Выкл"; }
+        };
+        document.getElementById('languageSelect').onchange = (e) => { currentLang = e.target.value; updateUITexts(); };
+        const modalBrush = document.getElementById('modalBrushSize');
+        const brushVal = document.getElementById('brushSizeValue');
+        modalBrush.oninput = (e) => { brushSize = parseInt(e.target.value); brushVal.innerText = brushSize; ctx.lineWidth = brushSize; };
+        document.getElementById('clearGalleryBtn').onclick = clearAllGallery;
+        
+        // Кнопки интерфейса
+        document.getElementById('enterCanvasBtn').onclick = showCanvas;
+        document.getElementById('galleryMenuBtn').onclick = showGallery;
+        document.getElementById('backToMenuFromGallery').onclick = showMenu;
+        document.getElementById('closeCanvasBtn').onclick = showMenu;
+        document.getElementById('rainbowBrushCanvas').onclick = () => { isRainbow=true; isEraser=false; document.getElementById('eraserCanvasBtn').classList.remove('eraser-active'); document.getElementById('canvasMessage').innerHTML = translations[currentLang].msgStart; };
+        document.getElementById('customBrushCanvas').onclick = () => { let picker=document.createElement('input'); picker.type='color'; picker.value=customColor; picker.oninput=(e)=>{ customColor=e.target.value; isRainbow=false; isEraser=false; document.getElementById('customBrushCanvas').style.background=customColor; document.getElementById('eraserCanvasBtn').classList.remove('eraser-active'); }; picker.click(); };
+        document.getElementById('eraserCanvasBtn').onclick = () => { isEraser=!isEraser; isRainbow=false; document.getElementById('eraserCanvasBtn').classList.toggle('eraser-active',isEraser); };
+        document.getElementById('saveToGalleryBtn').onclick = saveCurrentDrawing;
+        document.getElementById('clearCanvasBtn').onclick = clearFullCanvas;
+        
+        // События рисования
+        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', stopDraw); canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false }); canvas.addEventListener('touchend', stopDraw);
+        
+        // Запуск
+        loadGalleryFromStorage();
+        initCanvas();
+        renderGallery();
+        showMenu();
+        updateUITexts();
+    })();
+</script>
+</body>
+</html>
